@@ -1,0 +1,52 @@
+{
+  "name": "slant",
+  "author": "TechJeeper",
+  "version": "1.0.0",
+  "keywords": [
+    "pebble-app",
+    "watchface",
+    "louvers",
+    "architectural",
+    "customizable"
+  ],
+  "private": true,
+  "dependencies": {
+    "@moddable/pebbleproxy": "^0.2.0",
+    "@rebble/clay": "^1.0.10"
+  },
+  "pebble": {
+    "displayName": "Slant",
+    "uuid": "bfd4fff0-1c86-4705-b524-c56dfeaed432",
+    "projectType": "moddable",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "emery",
+      "gabbro"
+    ],
+    "capabilities": [
+      "configurable",
+      "health"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "messageKeys": [
+      "Preset",
+      "GlowMode",
+      "CustomSlat",
+      "CustomGlow",
+      "CustomShadow",
+      "Density",
+      "Layout",
+      "Accent",
+      "Use24Hour",
+      "LeadingZero",
+      "FlickOpen",
+      "OpenAmount"
+    ],
+    "resources": {
+      "media": []
+    }
+  }
+}

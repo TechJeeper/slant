@@ -1,0 +1,25 @@
+Time cut through louvers.
+
+Slant covers your wrist in horizontal architectural slats. A soft glow sits behind the material. Hours and minutes are punched through as cut light — readable at a glance, and unmistakably different from a flat digital face.
+
+Presets
+• Gallery Aluminum — cool gray louvers, cream daylight
+• Mid-century Oak — warm wood, amber glow
+• Night Blackout — charcoal slats, coral glow
+• Paper White — pale louvers, ink-blue cut light
+• Custom — pick slat, glow, and shadow colors
+
+Make it yours
+• Slat density: fine, medium, or bold
+• Layouts: stacked hours over minutes, side-by-side, or corner editorial
+• Accent strip: date, weekday, battery, or steps
+• Fixed glow or a day-cycle that shifts with the hour
+• Resting open amount: tight, normal, or airy
+• Flick your wrist to briefly open the louvers
+
+Battery-minded by design
+• Updates once a minute
+• No looping animation
+• Low battery collapses to a simpler stacked cut
+
+Built for Pebble Time 2 and Pebble Round 2.
