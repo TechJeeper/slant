@@ -5,14 +5,16 @@ int main(void) {
   window_stack_push(w, true);
 
   /*
-   * Digits + slat loops need a decent slot heap.
-   * App RAM on emery/gabbro is ~122 KB total — leave headroom.
+   * Error was: "Slot allocation: failed in fixed size heap".
+   * When stack+slot+chunk exceeds 32 KB the pools are fixed (no growth),
+   * so size for peak use. App RAM on emery/gabbro is ~122 KB total.
+   * Match the proven Hush split — digit open-maps need a fat slot heap.
    */
   ModdableCreationRecord creation = {
     .recordSize = sizeof(ModdableCreationRecord),
-    .stack = 4096,
-    .slot = 40960,
-    .chunk = 16384,
+    .stack = 6144,
+    .slot = 55296,
+    .chunk = 24576,
   };
   moddable_createMachine(&creation);
 

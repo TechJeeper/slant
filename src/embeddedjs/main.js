@@ -321,21 +321,12 @@ function maskFor(ch) {
   return DIGITS[n];
 }
 
-/* Build a coarse occupancy map: for each slat band, which x-ranges are "digit open". */
-function digitOpenRanges(layout) {
-  /* ranges[slatIndex] = array of {x0,x1} in screen coords — punched open */
+/*
+ * Punch digit cells through the louvers without building per-row maps.
+ * Allocating open-maps blew the fixed slot heap on emery/gabbro.
+ */
+function punchDigits(layout, thick, pitch, h) {
   const cell = layout.cell;
-  const rangesByY = {};
-
-  function addRange(y0, y1, x0, x1) {
-    const a = y0 | 0;
-    const b = y1 | 0;
-    for (let y = a; y < b; y++) {
-      if (!rangesByY[y]) rangesByY[y] = [];
-      rangesByY[y].push({ x0: x0 | 0, x1: x1 | 0 });
-    }
-  }
-
   for (let i = 0; i < layout.cells.length; i++) {
     const d = layout.cells[i];
     if (!d.ch) continue;
@@ -344,30 +335,27 @@ function digitOpenRanges(layout) {
     for (let row = 0; row < 7; row++) {
       const bits = mask[row];
       for (let col = 0; col < 5; col++) {
-        if (bits & (0x10 >> col)) {
-          const x0 = d.x + col * cell;
-          const y0 = d.y + row * cell;
-          addRange(y0, y0 + cell, x0, x0 + cell);
+        if (!(bits & (0x10 >> col))) continue;
+        const x0 = d.x + col * cell;
+        const y0 = d.y + row * cell;
+        const x1 = x0 + cell;
+        const y1 = y0 + cell;
+        /* Only clear slat material — gaps already show glow */
+        let bandY = 0;
+        while (bandY < h) {
+          const bandH = thick;
+          const bandBot = bandY + bandH;
+          if (bandBot > y0 && bandY < y1) {
+            const py = bandY > y0 ? bandY : y0;
+            const pb = bandBot < y1 ? bandBot : y1;
+            if (pb > py) render.fillRectangle(glowC, x0, py, x1 - x0, pb - py);
+          }
+          bandY += pitch;
+          if (bandY <= 0) break; /* safety */
         }
       }
     }
   }
-  return rangesByY;
-}
-
-function mergeRanges(list) {
-  if (!list || !list.length) return [];
-  const sorted = list.slice().sort((a, b) => a.x0 - b.x0);
-  const out = [{ x0: sorted[0].x0, x1: sorted[0].x1 }];
-  for (let i = 1; i < sorted.length; i++) {
-    const last = out[out.length - 1];
-    if (sorted[i].x0 <= last.x1 + 1) {
-      if (sorted[i].x1 > last.x1) last.x1 = sorted[i].x1;
-    } else {
-      out.push({ x0: sorted[i].x0, x1: sorted[i].x1 });
-    }
-  }
-  return out;
 }
 
 /* ── Draw ─────────────────────────────────────────────────────────────────── */
@@ -380,64 +368,22 @@ function drawLouvers(now) {
   const thick = louversOpen ? Math.max(2, spec.thick - 2) : spec.thick;
   const pitch = thick + gap;
   const layout = layoutDigits(now);
-  const openMap = digitOpenRanges(layout);
 
   render.begin();
   render.fillRectangle(glowC, 0, 0, w, h);
 
-  /* Horizontal louvers with punched digit openings */
+  /* Full-width louvers first (no allocations) */
   for (let y = 0; y < h; y += pitch) {
     const bandH = Math.min(thick, h - y);
     if (bandH <= 0) continue;
-
-    /* Collect open ranges across this band's rows */
-    let bandRanges = [];
-    for (let yy = y; yy < y + bandH; yy++) {
-      const r = openMap[yy];
-      if (r) {
-        for (let i = 0; i < r.length; i++) bandRanges.push(r[i]);
-      }
-    }
-    const opens = mergeRanges(bandRanges);
-
-    if (!opens.length) {
-      render.fillRectangle(slatC, 0, y, w, bandH);
-    } else {
-      let cursor = 0;
-      for (let i = 0; i < opens.length; i++) {
-        const o = opens[i];
-        if (o.x0 > cursor) {
-          render.fillRectangle(slatC, cursor, y, o.x0 - cursor, bandH);
-        }
-        /* leave glow in open digit region */
-        cursor = o.x1;
-      }
-      if (cursor < w) {
-        render.fillRectangle(slatC, cursor, y, w - cursor, bandH);
-      }
-    }
-
-    /* Soft underside shadow — skip over digit punches for a cleaner cut */
+    render.fillRectangle(slatC, 0, y, w, bandH);
     const sy = y + bandH;
     if (sy < h && gap > 0) {
-      const sh = Math.min(1, h - sy);
-      if (!opens.length) {
-        render.fillRectangle(shadowC, 0, sy, w, sh);
-      } else {
-        let cursor = 0;
-        for (let i = 0; i < opens.length; i++) {
-          const o = opens[i];
-          if (o.x0 > cursor) {
-            render.fillRectangle(shadowC, cursor, sy, o.x0 - cursor, sh);
-          }
-          cursor = o.x1;
-        }
-        if (cursor < w) {
-          render.fillRectangle(shadowC, cursor, sy, w - cursor, sh);
-        }
-      }
+      render.fillRectangle(shadowC, 0, sy, w, Math.min(1, h - sy));
     }
   }
+
+  punchDigits(layout, thick, pitch, h);
 
   /* Stacked layout: small glow colon dots between hour/minute rows */
   if (layout.colonX != null) {
@@ -457,14 +403,12 @@ function drawLouvers(now) {
       if (by + bh > h - 4) by = h - bh - 6;
       if (by < 4) by = 4;
 
-      /* offset shadow for "tilted strip" feel */
       render.fillRectangle(shadowC, bx + 3, by + 3, bw, bh);
       render.fillRectangle(accentBgC, bx, by, bw, bh);
       render.drawText(label, smallFont, accentFgC, bx + pad, by + 3);
     }
   }
 
-  /* Low-battery pip */
   if (lowPower) {
     render.fillRectangle(glowC, 6, 6, 10, 4);
   }
